@@ -1,0 +1,324 @@
+﻿using Newtonsoft.Json.Linq;
+using Ohiopyle.Geodesy.GeographicLib;
+using OxyPlot;
+using OxyPlot.Axes;
+using OxyPlot.Legends;
+using OxyPlot.Series;
+using Pennsylvania;
+using Pennsylvania.Propagation;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ClutterAnalysis
+{
+    /// <summary>
+    /// This is an implementation of Document 3K/137 by Australia. It is a proposed modification 
+    /// of Recommendation ITU-R P.2108 Sec 3.3
+    /// URL: https://www.itu.int/md/R23-WP3K-C-0137/en
+    /// </summary>
+    internal static class K137
+    {
+        public static double Invoke(double f__ghz, double theta__deg, double p,
+            double h_b__meter, double h_m__meter, double h_g__meter)
+        {
+            // skipping input validation checks
+
+            // supporting parameters
+            double K_1 = 93.0 * Math.Pow(f__ghz, 0.175);
+            double A_1 = 0.05;
+            double B_1 = 0.00476 * h_b__meter + 0.4071;
+            double C_1 = (h_g__meter - 5) / (h_m__meter - 5) * (90 - theta__deg) + theta__deg;
+
+            double term1 = Math.Log(1 - p / 100);
+            double term2 = A_1 * (1 - C_1 / 90) + Math.PI * C_1 / 180;
+            double term3 = B_1 * (90 - C_1) / 90;
+
+            double term4 = -K_1 * term1 * (1 / Math.Tan(term2));
+
+            double Q = InverseComplementaryCumulativeDistribution.Invoke(p / 100);
+
+            double L_ces__db = Math.Pow(term4, term3) - 1 - 0.6 * Q;
+
+            return L_ces__db;
+        }
+
+        /// <summary>
+        /// Generate a set of curves for varying elevation angles
+        /// </summary>
+        /// <param name="f__ghz">Frequency, in GHz</param>
+        /// <param name="h_b__meter">Average building height, in meters</param>
+        /// <param name="h_m__meter">Maximum building height, in meters</param>
+        /// <param name="h_g__meter">Terrestrial station antenna height, in meters</param>
+        public static void CurveSetForFrequency(double f__ghz, double h_b__meter,
+            double h_m__meter, double h_g__meter)
+        {
+            var pm = new PlotModel()
+            {
+                Background = OxyColors.White,
+                Title = $"Cumulative distribution of clutter loss not exceeded for {f__ghz} GHz",
+                Subtitle = $"3K/137 (AUS) Model; h_b = {h_b__meter}; h_m = {h_m__meter}, h_g = {h_g__meter}"
+            };
+
+            var xAxis = new LinearAxis();
+            xAxis.Title = "Clutter Loss (dB)";
+            xAxis.Position = AxisPosition.Bottom;
+            xAxis.MajorGridlineStyle = LineStyle.Solid;
+            xAxis.Maximum = 50;
+            pm.Axes.Add(xAxis);
+
+            var yAxis = new LinearAxis();
+            yAxis.Title = "Cummulative Probability";
+            yAxis.Position = AxisPosition.Left;
+            yAxis.MajorGridlineStyle = LineStyle.Solid;
+            pm.Axes.Add(yAxis);
+
+            // loop through each of the elevation angles
+            for (int theta__deg = 0; theta__deg <= 90; theta__deg += 10)
+            {
+                var losses = new List<double>();
+
+                // loop through each of the location p's
+                for (double p = 0.01; p < 100; p += 0.01)
+                {
+                    double L_ces__db = K137.Invoke(f__ghz, theta__deg, p, h_b__meter, h_m__meter, h_g__meter);
+                    losses.Add(L_ces__db);
+                }
+
+                Mathematics.BinData(losses.ToArray(), out double[] bins, out _, out double[] probs, 0.1);
+
+                var cdfSeries = new LineSeries()
+                {
+                    StrokeThickness = 2,
+                    Title = $"{theta__deg}°"
+                };
+
+                var sortedBins = bins.OrderBy(b => b).ToList();
+                double total = 0;
+                for (int i = 0; i< bins.Length; i++)
+                {
+                    // get index in bins of next sorted bin
+                    int j = Array.IndexOf(bins, sortedBins[i]);
+
+                    total += probs[j];
+                    cdfSeries.Points.Add(new DataPoint(bins[j], total));
+                }
+                pm.Series.Add(cdfSeries);
+            }
+
+            pm.Legends.Add(new Legend()
+            {
+                LegendPosition = LegendPosition.RightTop,
+                LegendPlacement = LegendPlacement.Outside,
+                LegendOrientation = LegendOrientation.Vertical,
+                LegendBorder = OxyColors.Black
+            });
+
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "plot.png"));
+        }
+
+        /// <summary>
+        /// Generate a set of curves for varying elevation angles
+        /// </summary>
+        /// <param name="f__ghz">Frequency, in GHz</param>
+        /// <param name="h_b__meter">Average building height, in meters</param>
+        /// <param name="h_m__meter">Maximum building height, in meters</param>
+        /// <param name="h_g__meter">Terrestrial station antenna height, in meters</param>
+        public static void ComparisionCurveSetForFrequency(double f__ghz, double h_b__meter,
+            double h_m__meter, double h_g__meter)
+        {
+            var pm = new PlotModel()
+            {
+                Background = OxyColors.White,
+                Title = $"Comparision of clutter loss for {f__ghz} GHz",
+                Subtitle = $"P.2018 Sec 3.3 and 3K/137 (AUS) Model; h_b = {h_b__meter}; h_m = {h_m__meter}, h_g = {h_g__meter}"
+            };
+            
+            var xAxis = new LinearAxis();
+            xAxis.Title = "Clutter Loss (dB)";
+            xAxis.Position = AxisPosition.Bottom;
+            xAxis.MajorGridlineStyle = LineStyle.Solid;
+            xAxis.MinorGridlineStyle = LineStyle.Solid;
+            xAxis.Maximum = 50;
+            pm.Axes.Add(xAxis);
+
+            var yAxis = new LinearAxis();
+            yAxis.Title = "Cummulative Probability";
+            yAxis.Position = AxisPosition.Left;
+            yAxis.MajorGridlineStyle = LineStyle.Solid;
+            yAxis.MinorGridlineStyle = LineStyle.Solid;
+            pm.Axes.Add(yAxis);
+
+            // loop through each of the elevation angles
+            for (int theta__deg = 0; theta__deg <= 90; theta__deg += 10)
+            {
+                var L_K137__db = new List<double>();
+                var L_P2108__db = new List<Double>();
+
+                // loop through each of the location p's
+                for (double p = 0.01; p < 100; p += 0.01)
+                {
+                    double L_K137_ces__db = K137.Invoke(f__ghz, theta__deg, p, h_b__meter, h_m__meter, h_g__meter);
+                    L_K137__db.Add(L_K137_ces__db);
+
+                    P2108.AeronauticalStatisticalModel(f__ghz, theta__deg, p, out double L_P2108_ces__db);
+                    L_P2108__db.Add(L_P2108_ces__db);
+                }
+
+                Mathematics.BinData(L_K137__db.ToArray(), out double[] bins_K137, out _, out double[] probs_K137, 0.1);
+                Mathematics.BinData(L_P2108__db.ToArray(), out double[] bins_P2108, out _, out double[] probs_P2108, 0.1);
+
+                var cdfSeriesK137 = new LineSeries()
+                {
+                    StrokeThickness = 2,
+                    LineStyle = LineStyle.Solid,
+                    Title = $"K137: {theta__deg}°"
+                };
+
+                var sortedBins_K137 = bins_K137.OrderBy(b => b).ToList();
+                double total = 0;
+                for (int i = 0; i < bins_K137.Length; i++)
+                {
+                    // get index in bins of next sorted bin
+                    int j = Array.IndexOf(bins_K137, sortedBins_K137[i]);
+
+                    total += probs_K137[j];
+                    cdfSeriesK137.Points.Add(new DataPoint(bins_K137[j], total));
+                }
+                pm.Series.Add(cdfSeriesK137);
+
+                var cdfSeriesP2108 = new LineSeries()
+                {
+                    StrokeThickness = 2,
+                    LineStyle = LineStyle.Dot,
+                    Title = $"P2108: {theta__deg}°"
+                };
+
+                var sortedBins_P2108 = bins_P2108.OrderBy(b => b).ToList();
+                total = 0;
+                for (int i = 0; i < bins_P2108.Length; i++)
+                {
+                    // get index in bins of next sorted bin
+                    int j = Array.IndexOf(bins_P2108, sortedBins_P2108[i]);
+
+                    total += probs_P2108[j];
+                    cdfSeriesP2108.Points.Add(new DataPoint(bins_P2108[j], total));
+                }
+                pm.Series.Add(cdfSeriesP2108);
+            }
+
+            pm.Legends.Add(new Legend()
+            {
+                LegendPosition = LegendPosition.RightTop,
+                LegendPlacement = LegendPlacement.Outside,
+                LegendOrientation = LegendOrientation.Vertical,
+                LegendBorder = OxyColors.Black
+            });
+
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "plot.png"));
+        }
+
+        public static void CompareWithBoulderMeasurements(double h_b__meter,
+            double h_m__meter, double h_g__meter)
+        {
+            var geodesy = new GeographicLibGeodesy();
+
+            var filepath = @"C:\Users\wkozma\Desktop\JWG-Clutter\input-documents\R23-WP3K-C-0148!P1!ZIP-E\Boulder_MartinAcres_GreenMesa_7601_20241114.json";
+
+            var json = JObject.Parse(File.ReadAllText(filepath));
+
+            var losses = new List<double>();
+            foreach (var pt in json["datapoints"])
+            {
+                double txLat = Convert.ToDouble(pt["tx_lat__deg"]);
+                double txLon = Convert.ToDouble(pt["tx_lon__deg"]);
+                double rxLat = Convert.ToDouble(pt["rx_lat__deg"]);
+                double rxLon = Convert.ToDouble(pt["rx_lon__deg"]);
+
+                double L_btl__db = Convert.ToDouble(pt["L_btl__dB"]);
+                double f__mhz = Convert.ToDouble(pt["f__MHz"]);
+
+                double d__km = geodesy.Distance(txLat, txLon, rxLat, rxLon) / 1000;
+
+                double L_fs__db = FreeSpaceLoss(f__mhz, d__km);
+
+                double L_c__db = L_btl__db - L_fs__db;
+                losses.Add(L_c__db);
+            }
+
+            var pm = new PlotModel()
+            {
+                Background = OxyColors.White,
+                Title = $"Measurement Comparison",
+                Subtitle = $"3K/137 (AUS) Model; h_b = {h_b__meter}; h_m = {h_m__meter}, h_g = {h_g__meter}"
+            };
+
+            var xAxis = new LinearAxis();
+            xAxis.Title = "Clutter Loss (dB)";
+            xAxis.Position = AxisPosition.Bottom;
+            xAxis.MajorGridlineStyle = LineStyle.Solid;
+            xAxis.Maximum = 50;
+            pm.Axes.Add(xAxis);
+
+            var yAxis = new LinearAxis();
+            yAxis.Title = "Cummulative Probability";
+            yAxis.Position = AxisPosition.Left;
+            yAxis.MajorGridlineStyle = LineStyle.Solid;
+            pm.Axes.Add(yAxis);
+
+            Mathematics.BinData(losses.ToArray(), out double[] bins, out _, out double[] probs, 0.1);
+
+            var cdfMeasurements = new LineSeries()
+            {
+                StrokeThickness = 2,
+                Title = $"Measurements"
+            };
+
+            var sortedBins = bins.OrderBy(b => b).ToList();
+            double total = 0;
+            for (int i = 0; i < bins.Length; i++)
+            {
+                // get index in bins of next sorted bin
+                int j = Array.IndexOf(bins, sortedBins[i]);
+
+                total += probs[j];
+                cdfMeasurements.Points.Add(new DataPoint(bins[j], total));
+            }
+            pm.Series.Add(cdfMeasurements);
+
+            pm.Legends.Add(new Legend()
+            {
+                LegendPosition = LegendPosition.RightTop,
+                LegendPlacement = LegendPlacement.Outside,
+                LegendOrientation = LegendOrientation.Vertical,
+                LegendBorder = OxyColors.Black
+            });
+
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "plot.png"));
+        }
+
+        public static void ImpactOfVaryingHg(double f__ghz, double theta__deg,
+            double h_b__meter, double h_m__meter)
+        {
+
+        }
+
+        /// <summary>
+        /// Compute free space basic transmission loss
+        /// </summary>
+        /// <param name="f__mhz">Frequency, in MHz</param>
+        /// <param name="d__km">Distance, in km</param>
+        /// <returns>Loss, in dB</returns>
+        private static double FreeSpaceLoss(double f__mhz, double d__km)
+        {
+            return 20 * Math.Log10(d__km) + 20 * Math.Log10(f__mhz) + 32.45;
+        }
+    }
+}
