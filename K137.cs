@@ -23,10 +23,41 @@ namespace ClutterAnalysis
     /// </summary>
     internal static class K137
     {
+        static OxyColor[] _colors = new[]
+        {
+            OxyColors.Green,
+            OxyColors.Red,
+            OxyColors.Blue,
+            OxyColors.Yellow,
+            OxyColors.Purple,
+            OxyColors.Orange,
+            OxyColors.Orchid,
+            OxyColors.Brown,
+            OxyColors.Salmon,
+            OxyColors.RoyalBlue,
+            OxyColors.Pink
+        };
+
+        /// <summary>
+        /// Proposed clutter model in 3K/137
+        /// </summary>
+        /// <param name="f__ghz">Frequency, in GHz</param>
+        /// <param name="theta__deg">Elevation angle, in deg</param>
+        /// <param name="p">Precentage of locations</param>
+        /// <param name="h_b__meter">Average building height, in meters</param>
+        /// <param name="h_m__meter">Maximum building height, in meters</param>
+        /// <param name="h_g__meter">Terrestrial antenna height, in meters</param>
+        /// <returns>Clutter loss, in dB</returns>
         public static double Invoke(double f__ghz, double theta__deg, double p,
             double h_b__meter, double h_m__meter, double h_g__meter)
         {
-            // skipping input validation checks
+            // partial input validation
+            if (h_b__meter < 9 || h_b__meter > 30)
+                throw new ArgumentException("h_b is out of range");
+            if (h_m__meter < 9 || h_m__meter > 200)
+                throw new ArgumentException("h_m is out of range");
+            if (h_g__meter < 5 || h_g__meter > h_m__meter)
+                throw new ArgumentException("h_g is out of range");
 
             // supporting parameters
             double K_1 = 93.0 * Math.Pow(f__ghz, 0.175);
@@ -175,9 +206,10 @@ namespace ClutterAnalysis
 
                 var cdfSeriesK137 = new LineSeries()
                 {
-                    StrokeThickness = 2,
+                    StrokeThickness = 3,
                     LineStyle = LineStyle.Solid,
-                    Title = $"K137: {theta__deg}°"
+                    Title = $"{theta__deg}°",
+                    Color = _colors[theta__deg / 10]
                 };
 
                 var sortedBins_K137 = bins_K137.OrderBy(b => b).ToList();
@@ -196,7 +228,8 @@ namespace ClutterAnalysis
                 {
                     StrokeThickness = 2,
                     LineStyle = LineStyle.Dot,
-                    Title = $"P2108: {theta__deg}°"
+                    Color = OxyColors.Black,// _colors[theta__deg / 10]
+                    //Title = $"P2108: {theta__deg}°"
                 };
 
                 var sortedBins_P2108 = bins_P2108.OrderBy(b => b).ToList();
@@ -304,10 +337,146 @@ namespace ClutterAnalysis
             OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "plot.png"));
         }
 
-        public static void ImpactOfVaryingHg(double f__ghz, double theta__deg,
-            double h_b__meter, double h_m__meter)
+        public static void ImpactOfVaryingHb(double f__ghz, double theta__deg,
+            double h_g__meter, double h_m__meter)
         {
+            var pm = new PlotModel()
+            {
+                Background = OxyColors.White,
+                Title = $"Impact of h_b on clutter loss for {f__ghz} GHz",
+                Subtitle = $"3K/137 (AUS) Model; h_m = {h_m__meter}, h_g = {h_g__meter}, theta = {theta__deg}"
+            };
 
+            var xAxis = new LinearAxis();
+            xAxis.Title = "Clutter Loss (dB)";
+            xAxis.Position = AxisPosition.Bottom;
+            xAxis.MajorGridlineStyle = LineStyle.Solid;
+            xAxis.MinorGridlineStyle = LineStyle.Solid;
+            xAxis.Maximum = 50;
+            pm.Axes.Add(xAxis);
+
+            var yAxis = new LinearAxis();
+            yAxis.Title = "Cummulative Probability";
+            yAxis.Position = AxisPosition.Left;
+            yAxis.MajorGridlineStyle = LineStyle.Solid;
+            yAxis.MinorGridlineStyle = LineStyle.Solid;
+            pm.Axes.Add(yAxis);
+
+            // loop values of h_b__meter
+            for (double h_b__meter = 9; h_b__meter <= 30; h_b__meter += 3)
+            {
+                var L_K137__db = new List<double>();
+
+                // loop through each of the location p's
+                for (double p = 0.01; p < 100; p += 0.01)
+                {
+                    double L_K137_ces__db = K137.Invoke(f__ghz, theta__deg, p, h_b__meter, h_m__meter, h_g__meter);
+                    L_K137__db.Add(L_K137_ces__db);
+                }
+
+                Mathematics.BinData(L_K137__db.ToArray(), out double[] bins_K137, out _, out double[] probs_K137, 0.1);
+
+                var cdfSeriesK137 = new LineSeries()
+                {
+                    StrokeThickness = 2,
+                    LineStyle = LineStyle.Solid,
+                    Title = $"{h_b__meter} m",
+                };
+
+                var sortedBins_K137 = bins_K137.OrderBy(b => b).ToList();
+                double total = 0;
+                for (int i = 0; i < bins_K137.Length; i++)
+                {
+                    // get index in bins of next sorted bin
+                    int j = Array.IndexOf(bins_K137, sortedBins_K137[i]);
+
+                    total += probs_K137[j];
+                    cdfSeriesK137.Points.Add(new DataPoint(bins_K137[j], total));
+                }
+                pm.Series.Add(cdfSeriesK137);
+            }
+
+            pm.Legends.Add(new Legend()
+            {
+                LegendPosition = LegendPosition.RightTop,
+                LegendPlacement = LegendPlacement.Outside,
+                LegendOrientation = LegendOrientation.Vertical,
+                LegendBorder = OxyColors.Black
+            });
+
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "plot.png"));
+        }
+
+        public static void ImpactOfVaryingHm(double f__ghz, double theta__deg,
+            double h_g__meter, double h_b__meter)
+        {
+            var pm = new PlotModel()
+            {
+                Background = OxyColors.White,
+                Title = $"Impact of h_b on clutter loss for {f__ghz} GHz",
+                Subtitle = $"3K/137 (AUS) Model; h_b = {h_b__meter}, h_g = {h_g__meter}, theta = {theta__deg}"
+            };
+
+            var xAxis = new LinearAxis();
+            xAxis.Title = "Clutter Loss (dB)";
+            xAxis.Position = AxisPosition.Bottom;
+            xAxis.MajorGridlineStyle = LineStyle.Solid;
+            xAxis.MinorGridlineStyle = LineStyle.Solid;
+            xAxis.Maximum = 50;
+            pm.Axes.Add(xAxis);
+
+            var yAxis = new LinearAxis();
+            yAxis.Title = "Cummulative Probability";
+            yAxis.Position = AxisPosition.Left;
+            yAxis.MajorGridlineStyle = LineStyle.Solid;
+            yAxis.MinorGridlineStyle = LineStyle.Solid;
+            pm.Axes.Add(yAxis);
+
+            // loop values of h_b__meter
+            for (double h_m__meter = 25; h_m__meter <= 200; h_m__meter += 25)
+            {
+                var L_K137__db = new List<double>();
+
+                // loop through each of the location p's
+                for (double p = 0.01; p < 100; p += 0.01)
+                {
+                    double L_K137_ces__db = K137.Invoke(f__ghz, theta__deg, p, h_b__meter, h_m__meter, h_g__meter);
+                    L_K137__db.Add(L_K137_ces__db);
+                }
+
+                Mathematics.BinData(L_K137__db.ToArray(), out double[] bins_K137, out _, out double[] probs_K137, 0.1);
+
+                var cdfSeriesK137 = new LineSeries()
+                {
+                    StrokeThickness = 2,
+                    LineStyle = LineStyle.Solid,
+                    Title = $"{h_m__meter} m",
+                };
+
+                var sortedBins_K137 = bins_K137.OrderBy(b => b).ToList();
+                double total = 0;
+                for (int i = 0; i < bins_K137.Length; i++)
+                {
+                    // get index in bins of next sorted bin
+                    int j = Array.IndexOf(bins_K137, sortedBins_K137[i]);
+
+                    total += probs_K137[j];
+                    cdfSeriesK137.Points.Add(new DataPoint(bins_K137[j], total));
+                }
+                pm.Series.Add(cdfSeriesK137);
+            }
+
+            pm.Legends.Add(new Legend()
+            {
+                LegendPosition = LegendPosition.RightTop,
+                LegendPlacement = LegendPlacement.Outside,
+                LegendOrientation = LegendOrientation.Vertical,
+                LegendBorder = OxyColors.Black
+            });
+
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "plot.png"));
         }
 
         /// <summary>
