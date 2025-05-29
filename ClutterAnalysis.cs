@@ -22,10 +22,10 @@ namespace ClutterAnalysis
             _clutter = new RasterFile(@"C:\Environment\Boulder2020.cltr.tif", new GeographicLibGeodesy());
 
             // representative clutter area
-            double lat_NW = 39.997366;
-            double lon_NW = -105.260818;
-            double lat_SE = 39.990857;
-            double lon_SE = -105.251333;
+            double lat_NW = 40.021110;
+            double lon_NW = -105.286948;
+            double lat_SE = 40.017886;
+            double lon_SE = -105.271102;
 
             // convert to UTM coords
             _clutter.ProjectPoint(lat_NW, lon_NW, out double plat1, out double plon1);
@@ -38,7 +38,7 @@ namespace ClutterAnalysis
 
             var pm = new PlotModel
             {
-                Title = $"Distribution of Clutter Height in Martin Acres",
+                Title = $"Distribution of Clutter Height in Downtown Boulder",
                 Subtitle = $"Number of Samples = {heights_c.Count}",
                 Background = OxyColors.White
             };

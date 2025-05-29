@@ -28,7 +28,7 @@ namespace ClutterAnalysis
             OxyColors.Green,
             OxyColors.Red,
             OxyColors.Blue,
-            OxyColors.Yellow,
+            OxyColors.Goldenrod,
             OxyColors.Purple,
             OxyColors.Orange,
             OxyColors.Orchid,
@@ -389,6 +389,211 @@ namespace ClutterAnalysis
                 LegendPosition = LegendPosition.BottomCenter,
                 LegendPlacement = LegendPlacement.Outside,
                 LegendOrientation = LegendOrientation.Horizontal,
+                LegendBorder = OxyColors.Black
+            });
+
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "plot.png"));
+        }
+
+        public static void ComparisonWithBristolMeasurements(double h_b__meter,
+            double h_m__meter, double h_g__meter)
+        {
+            double total = 0;
+
+            var lines = File.ReadAllLines(@"C:\Users\wkozma\Desktop\JWG-Clutter\UK-Bristol.csv").Skip(1);
+
+            var pm = new PlotModel()
+            {
+                Background = OxyColors.White,
+                Title = $"Bristol 5760 MHz Comparison",
+                Subtitle = $"3K/137 (AUS) Model; h_b = {h_b__meter}; h_m = {h_m__meter}, h_g = {h_g__meter}"
+            };
+
+            var xAxis = new LinearAxis();
+            xAxis.Title = "Clutter Loss (dB)";
+            xAxis.Position = AxisPosition.Bottom;
+            xAxis.MajorGridlineStyle = LineStyle.Solid;
+            xAxis.Maximum = 45;
+            pm.Axes.Add(xAxis);
+
+            var yAxis = new LinearAxis();
+            yAxis.Title = "Cummulative Probability";
+            yAxis.Position = AxisPosition.Left;
+            yAxis.MajorGridlineStyle = LineStyle.Solid;
+            yAxis.MinorGridlineStyle = LineStyle.Solid;
+            pm.Axes.Add(yAxis);
+
+            // loop through each of the elevation angles
+            double f__ghz = 5.760;
+            for (int theta__deg = 2; theta__deg <= 8; theta__deg += 2)
+            {
+                var L_K137__db = new List<double>();
+                var L_P2108__db = new List<Double>();
+
+                // loop through each of the location p's
+                for (double p = 0.01; p < 100; p += 0.01)
+                {
+                    double L_K137_ces__db = K137.Invoke(f__ghz, theta__deg, p, h_b__meter, h_m__meter, h_g__meter);
+                    L_K137__db.Add(L_K137_ces__db);
+
+                    P2108.AeronauticalStatisticalModel(f__ghz, theta__deg, p, out double L_P2108_ces__db);
+                    L_P2108__db.Add(L_P2108_ces__db);
+                }
+
+                Mathematics.BinData(L_K137__db.ToArray(), out double[] bins_K137, out _, out double[] probs_K137, 0.1);
+                Mathematics.BinData(L_P2108__db.ToArray(), out double[] bins_P2108, out _, out double[] probs_P2108, 0.1);
+
+                var cdfSeriesK137 = new LineSeries()
+                {
+                    StrokeThickness = 3,
+                    LineStyle = LineStyle.Solid,
+                    Title = $"K137, {theta__deg}°",
+                    Color = _colors[theta__deg / 2]
+                };
+
+                var sortedBins_K137 = bins_K137.OrderBy(b => b).ToList();
+                total = 0;
+                for (int i = 0; i < bins_K137.Length; i++)
+                {
+                    // get index in bins of next sorted bin
+                    int j = Array.IndexOf(bins_K137, sortedBins_K137[i]);
+
+                    total += probs_K137[j];
+                    cdfSeriesK137.Points.Add(new DataPoint(bins_K137[j], total));
+                }
+                //pm.Series.Add(cdfSeriesK137);
+
+                var cdfSeriesP2108 = new LineSeries()
+                {
+                    StrokeThickness = 2,
+                    Color = _colors[theta__deg / 2],// _colors[theta__deg / 10]
+                    Title = $"P2108: {theta__deg}°"
+                };
+
+                var sortedBins_P2108 = bins_P2108.OrderBy(b => b).ToList();
+                total = 0;
+                for (int i = 0; i < bins_P2108.Length; i++)
+                {
+                    // get index in bins of next sorted bin
+                    int j = Array.IndexOf(bins_P2108, sortedBins_P2108[i]);
+
+                    total += probs_P2108[j];
+                    cdfSeriesP2108.Points.Add(new DataPoint(bins_P2108[j], total));
+                }
+                pm.Series.Add(cdfSeriesP2108);
+            }
+
+            // bin Bristol measurements
+            var deg1_3 = new List<Double>();
+            var deg3_5 = new List<Double>();
+            var deg5_7 = new List<Double>();
+            var deg7_9 = new List<Double>();
+            foreach (var line in lines)
+            {
+                var parts = line.Split(',');
+                var L_c = Convert.ToDouble(parts[0]);
+                var theta = Convert.ToDouble(parts[1]);
+
+                if (theta >= 1 && theta < 3)
+                    deg1_3.Add(L_c);
+                if (theta >= 3 && theta < 5)
+                    deg3_5.Add(L_c);
+                if (theta >= 5 && theta < 7)
+                    deg5_7.Add(L_c);
+                if (theta >= 7 && theta < 9)
+                    deg7_9.Add(L_c);
+            }
+
+            Mathematics.BinData(deg1_3.ToArray(), out double[] bins_13, out _, out double[] probs_13, 0.1);
+            var cdfSeries13 = new LineSeries()
+            {
+                StrokeThickness = 3,
+                LineStyle = LineStyle.Dot,
+                Title = $"Meas, 1-3°",
+                Color = _colors[1]
+            };
+
+            var sortedBins_13 = bins_13.OrderBy(b => b).ToList();
+            total = 0;
+            for (int i = 0; i < bins_13.Length; i++)
+            {
+                // get index in bins of next sorted bin
+                int j = Array.IndexOf(bins_13, sortedBins_13[i]);
+
+                total += probs_13[j];
+                cdfSeries13.Points.Add(new DataPoint(bins_13[j], total));
+            }
+            pm.Series.Add(cdfSeries13);
+
+            Mathematics.BinData(deg3_5.ToArray(), out double[] bins_35, out _, out double[] probs_35, 0.1);
+            var cdfSeries35 = new LineSeries()
+            {
+                StrokeThickness = 3,
+                LineStyle = LineStyle.Dot,
+                Title = $"Meas, 3-5°",
+                Color = _colors[2]
+            };
+
+            var sortedBins_35 = bins_35.OrderBy(b => b).ToList();
+            total = 0;
+            for (int i = 0; i < bins_35.Length; i++)
+            {
+                // get index in bins of next sorted bin
+                int j = Array.IndexOf(bins_35, sortedBins_35[i]);
+
+                total += probs_35[j];
+                cdfSeries35.Points.Add(new DataPoint(bins_35[j], total));
+            }
+            pm.Series.Add(cdfSeries35);
+
+            Mathematics.BinData(deg5_7.ToArray(), out double[] bins_57, out _, out double[] probs_57, 0.1);
+            var cdfSeries57 = new LineSeries()
+            {
+                StrokeThickness = 3,
+                LineStyle = LineStyle.Dot,
+                Title = $"Meas, 5-7°",
+                Color = _colors[3]
+            };
+
+            var sortedBins_57 = bins_57.OrderBy(b => b).ToList();
+            total = 0;
+            for (int i = 0; i < bins_57.Length; i++)
+            {
+                // get index in bins of next sorted bin
+                int j = Array.IndexOf(bins_57, sortedBins_57[i]);
+
+                total += probs_57[j];
+                cdfSeries57.Points.Add(new DataPoint(bins_57[j], total));
+            }
+            pm.Series.Add(cdfSeries57);
+
+            Mathematics.BinData(deg7_9.ToArray(), out double[] bins_79, out _, out double[] probs_79, 0.1);
+            var cdfSeries79 = new LineSeries()
+            {
+                StrokeThickness = 3,
+                LineStyle = LineStyle.Dot,
+                Title = $"Meas, 1-3°",
+                Color = _colors[4]
+            };
+
+            var sortedBins_79 = bins_79.OrderBy(b => b).ToList();
+            total = 0;
+            for (int i = 0; i < bins_79.Length; i++)
+            {
+                // get index in bins of next sorted bin
+                int j = Array.IndexOf(bins_79, sortedBins_79[i]);
+
+                total += probs_79[j];
+                cdfSeries79.Points.Add(new DataPoint(bins_79[j], total));
+            }
+            pm.Series.Add(cdfSeries79);
+
+            pm.Legends.Add(new Legend()
+            {
+                LegendPosition = LegendPosition.RightTop,
+                LegendPlacement = LegendPlacement.Outside,
+                LegendOrientation = LegendOrientation.Vertical,
                 LegendBorder = OxyColors.Black
             });
 
