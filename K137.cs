@@ -479,6 +479,76 @@ namespace ClutterAnalysis
             OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "plot.png"));
         }
 
+        public static void ImpactOfVaryingHg(double f__ghz, double theta__deg,
+            double h_m__meter, double h_b__meter)
+        {
+            var pm = new PlotModel()
+            {
+                Background = OxyColors.White,
+                Title = $"Impact of h_g on clutter loss for {f__ghz} GHz",
+                Subtitle = $"3K/137 (AUS) Model; h_b = {h_b__meter}, h_m = {h_m__meter}, theta = {theta__deg}"
+            };
+
+            var xAxis = new LinearAxis();
+            xAxis.Title = "Clutter Loss (dB)";
+            xAxis.Position = AxisPosition.Bottom;
+            xAxis.MajorGridlineStyle = LineStyle.Solid;
+            xAxis.MinorGridlineStyle = LineStyle.Solid;
+            xAxis.Maximum = 50;
+            pm.Axes.Add(xAxis);
+
+            var yAxis = new LinearAxis();
+            yAxis.Title = "Cummulative Probability";
+            yAxis.Position = AxisPosition.Left;
+            yAxis.MajorGridlineStyle = LineStyle.Solid;
+            yAxis.MinorGridlineStyle = LineStyle.Solid;
+            pm.Axes.Add(yAxis);
+
+            for (double h_g__meter = 5; h_g__meter <= 30; h_g__meter += 5)
+            {
+                var L_K137__db = new List<double>();
+
+                // loop through each of the location p's
+                for (double p = 0.01; p < 100; p += 0.01)
+                {
+                    double L_K137_ces__db = K137.Invoke(f__ghz, theta__deg, p, h_b__meter, h_m__meter, h_g__meter);
+                    L_K137__db.Add(L_K137_ces__db);
+                }
+
+                Mathematics.BinData(L_K137__db.ToArray(), out double[] bins_K137, out _, out double[] probs_K137, 0.1);
+
+                var cdfSeriesK137 = new LineSeries()
+                {
+                    StrokeThickness = 2,
+                    LineStyle = LineStyle.Solid,
+                    Title = $"{h_g__meter} m",
+                };
+
+                var sortedBins_K137 = bins_K137.OrderBy(b => b).ToList();
+                double total = 0;
+                for (int i = 0; i < bins_K137.Length; i++)
+                {
+                    // get index in bins of next sorted bin
+                    int j = Array.IndexOf(bins_K137, sortedBins_K137[i]);
+
+                    total += probs_K137[j];
+                    cdfSeriesK137.Points.Add(new DataPoint(bins_K137[j], total));
+                }
+                pm.Series.Add(cdfSeriesK137);
+            }
+
+            pm.Legends.Add(new Legend()
+            {
+                LegendPosition = LegendPosition.RightTop,
+                LegendPlacement = LegendPlacement.Outside,
+                LegendOrientation = LegendOrientation.Vertical,
+                LegendBorder = OxyColors.Black
+            });
+
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "plot.png"));
+        }
+
         /// <summary>
         /// Compute free space basic transmission loss
         /// </summary>
