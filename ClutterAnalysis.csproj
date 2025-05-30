@@ -95,8 +95,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ClutterAnalysis.cs" />
+    <Compile Include="Common.cs" />
     <Compile Include="InverseComplementaryCumulativeDistribution.cs" />
     <Compile Include="K137.cs" />
+    <Compile Include="K143.cs" />
     <Compile Include="MeasurementSummary.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
