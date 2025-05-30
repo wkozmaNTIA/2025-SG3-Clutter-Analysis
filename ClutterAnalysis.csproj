@@ -99,6 +99,7 @@
     <Compile Include="InverseComplementaryCumulativeDistribution.cs" />
     <Compile Include="K137.cs" />
     <Compile Include="K143.cs" />
+    <Compile Include="K182.cs" />
     <Compile Include="MeasurementSummary.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
