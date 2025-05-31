@@ -1,5 +1,10 @@
 ﻿using Newtonsoft.Json.Linq;
 using Ohiopyle.Geodesy.GeographicLib;
+using OxyPlot;
+using OxyPlot.Annotations;
+using OxyPlot.Axes;
+using OxyPlot.Series;
+using Pennsylvania;
 using Pennsylvania.Propagation;
 using System;
 using System.Collections.Generic;
@@ -15,7 +20,13 @@ namespace ClutterAnalysis
         [STAThread]
         static void Main(string[] args)
         {
-            DumpClutterLossToFile();
+            GenerateHistogramOfBTL();
+            return;
+
+            //DumpClutterLossToFile();
+            //return;
+
+            K182.CompareWithBoulderMeasurements(K182.Environment.MidRise);
             return;
 
             //K137.ComparisionCurveSetForFrequency(1, 9, 9, 5);
@@ -36,6 +47,75 @@ namespace ClutterAnalysis
             }
 
             MeasurementSummary.BoulderData();
+        }
+
+        static void GenerateHistogramOfBTL()
+        {
+            var json = JObject.Parse(File.ReadAllText(@"C:\Users\wkozma\Downloads\R23-WP3K-C-0021!P1!ZIP-E\Boulder_MartinAcres_GreenMesa_3475_20230621.json"));
+
+            var btls = new List<double>();
+            foreach (var pt in json["measurements"])
+            {
+                var btl = Convert.ToDouble(pt["L_btl__db"]);
+                btls.Add(btl);
+            }
+
+            var pm = new PlotModel()
+            {
+                Title = "Distribution of Basic Transmission Loss",
+                Subtitle = "Boulder_MartinAcres_GreenMesa_3475_20230621",
+                Background = OxyColors.White
+            };
+
+            Mathematics.BinData(btls.ToArray(), out double[] bins, out _, out double[] probs, 0.1);
+
+            var xAxis = new LinearAxis();
+            xAxis.Title = "Basic Transmission Loss (dB)";
+            xAxis.Position = AxisPosition.Bottom;
+            xAxis.MajorGridlineStyle = LineStyle.Solid;
+            xAxis.Maximum = 190;
+            pm.Axes.Add(xAxis);
+
+            var yAxis = new LinearAxis();
+            yAxis.Title = "Cummulative Probability";
+            yAxis.Position = AxisPosition.Left;
+            yAxis.MajorGridlineStyle = LineStyle.Solid;
+            yAxis.MinorGridlineStyle = LineStyle.Solid;
+            pm.Axes.Add(yAxis);
+
+            var cdfMeasurements = new LineSeries()
+            {
+                StrokeThickness = 2,
+                Title = $"Measurements",
+                Color = OxyColors.Blue
+            };
+
+            var sortedBins = bins.OrderBy(b => b).ToList();
+            double total = 0;
+            for (int i = 0; i < bins.Length; i++)
+            {
+                // get index in bins of next sorted bin
+                int j = Array.IndexOf(bins, sortedBins[i]);
+
+                total += probs[j];
+                cdfMeasurements.Points.Add(new DataPoint(bins[j], total));
+            }
+            pm.Series.Add(cdfMeasurements);
+
+            var noise__db = Convert.ToDouble(json["metadata"]["RelativeNoiseFloorDb"]);
+
+            var noiseFloor = new LineSeries
+            {
+                StrokeThickness = 3,
+                Color = OxyColors.Black
+            };
+            noiseFloor.Points.Add(new DataPoint(noise__db, 0));
+            noiseFloor.Points.Add(new DataPoint(noise__db, 1));
+            pm.Series.Add(noiseFloor);
+
+
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "plot.png"));
         }
 
         static void DumpClutterLossToFile()

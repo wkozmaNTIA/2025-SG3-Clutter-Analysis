@@ -1,5 +1,13 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using Ohiopyle.Geodesy.GeographicLib;
+using OxyPlot;
+using OxyPlot.Axes;
+using OxyPlot.Legends;
+using OxyPlot.Series;
+using Pennsylvania;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -106,6 +114,144 @@ namespace ClutterAnalysis
                 0.6 * InverseComplementaryCumulativeDistribution.Invoke(p / 100);
 
             return L_ces__db;
+        }
+
+        public static void CompareWithBoulderMeasurements(Environment env)
+        {
+            var geodesy = new GeographicLibGeodesy();
+
+            var filepath = @"C:\Users\wkozma\Desktop\JWG-Clutter\input-documents\R23-WP3K-C-0148!P1!ZIP-E\Boulder_MartinAcres_GreenMesa_7601_20241114.json";
+
+            var json = JObject.Parse(File.ReadAllText(filepath));
+
+            var losses = new List<double>();
+            foreach (var pt in json["datapoints"])
+            {
+                double txLat = Convert.ToDouble(pt["tx_lat__deg"]);
+                double txLon = Convert.ToDouble(pt["tx_lon__deg"]);
+                double rxLat = Convert.ToDouble(pt["rx_lat__deg"]);
+                double rxLon = Convert.ToDouble(pt["rx_lon__deg"]);
+
+                double L_btl__db = Convert.ToDouble(pt["L_btl__dB"]);
+                double f__mhz = Convert.ToDouble(pt["f__MHz"]);
+
+                double d__km = geodesy.Distance(txLat, txLon, rxLat, rxLon) / 1000;
+
+                double L_fs__db = Common.FreeSpaceLoss(f__mhz, d__km);
+
+                double L_c__db = L_btl__db - L_fs__db;
+                losses.Add(L_c__db);
+            }
+
+            var pm = new PlotModel()
+            {
+                Background = OxyColors.White,
+                Title = $"Martin Acres 7601 MHz Comparison",
+                Subtitle = $"3K/182 (Ericsson) Model; env = {env.ToString()}"
+            };
+
+            var xAxis = new LinearAxis();
+            xAxis.Title = "Clutter Loss (dB)";
+            xAxis.Position = AxisPosition.Bottom;
+            xAxis.MajorGridlineStyle = LineStyle.Solid;
+            xAxis.Maximum = 45;
+            pm.Axes.Add(xAxis);
+
+            var yAxis = new LinearAxis();
+            yAxis.Title = "Cummulative Probability";
+            yAxis.Position = AxisPosition.Left;
+            yAxis.MajorGridlineStyle = LineStyle.Solid;
+            yAxis.MinorGridlineStyle = LineStyle.Solid;
+            pm.Axes.Add(yAxis);
+
+            Mathematics.BinData(losses.ToArray(), out double[] bins, out _, out double[] probs, 0.1);
+
+            var cdfMeasurements = new LineSeries()
+            {
+                StrokeThickness = 2,
+                Title = $"Measurements",
+                Color = OxyColors.Blue
+            };
+
+            var sortedBins = bins.OrderBy(b => b).ToList();
+            double total = 0;
+            for (int i = 0; i < bins.Length; i++)
+            {
+                // get index in bins of next sorted bin
+                int j = Array.IndexOf(bins, sortedBins[i]);
+
+                total += probs[j];
+                cdfMeasurements.Points.Add(new DataPoint(bins[j], total));
+            }
+            pm.Series.Add(cdfMeasurements);
+
+            var losses_3deg = new List<double>();
+            var losses_6deg = new List<double>();
+
+            // loop through each of the location p's
+            for (double p = 0.01; p < 100; p += 0.01)
+            {
+                double L_ces__db = K182.Invoke(7.601, 3, p, 2.82, env);
+                losses_3deg.Add(L_ces__db);
+
+                L_ces__db = K182.Invoke(7.601, 6, p, 2.82, env);
+                losses_6deg.Add(L_ces__db);
+            }
+
+            Mathematics.BinData(losses_3deg.ToArray(), out double[] bins_3deg, out _, out double[] probs_3deg, 0.1);
+            Mathematics.BinData(losses_6deg.ToArray(), out double[] bins_6deg, out _, out double[] probs_6deg, 0.1);
+
+            var cdfSeries_3deg = new LineSeries()
+            {
+                StrokeThickness = 2,
+                Title = $"2°",
+                Color = OxyColors.Purple,
+                LineStyle = LineStyle.Dash
+            };
+            var cdfSeries_6deg = new LineSeries()
+            {
+                StrokeThickness = 2,
+                Title = $"4°",
+                Color = OxyColors.Green,
+                LineStyle = LineStyle.Dash
+            };
+
+            var sortedBins_3deg = bins_3deg.OrderBy(b => b).ToList();
+            var sortedBins_6deg = bins_6deg.OrderBy(b => b).ToList();
+
+            total = 0;
+            for (int i = 0; i < bins_3deg.Length; i++)
+            {
+                // get index in bins of next sorted bin
+                int j = Array.IndexOf(bins_3deg, sortedBins_3deg[i]);
+
+                total += probs_3deg[j];
+                cdfSeries_3deg.Points.Add(new DataPoint(bins_3deg[j], total));
+            }
+
+            total = 0;
+            for (int i = 0; i < bins_6deg.Length; i++)
+            {
+                // get index in bins of next sorted bin
+                int j = Array.IndexOf(bins_6deg, sortedBins_6deg[i]);
+
+                total += probs_6deg[j];
+                cdfSeries_6deg.Points.Add(new DataPoint(bins_6deg[j], total));
+            }
+
+            pm.Series.Add(cdfSeries_3deg);
+            pm.Series.Add(cdfSeries_6deg);
+
+            pm.Legends.Add(new Legend()
+            {
+                LegendPosition = LegendPosition.BottomCenter,
+                LegendPlacement = LegendPlacement.Outside,
+                LegendOrientation = LegendOrientation.Horizontal,
+                LegendBorder = OxyColors.Black
+            });
+
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "plot.png"));
         }
     }
 }
