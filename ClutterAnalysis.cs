@@ -111,6 +111,15 @@ namespace ClutterAnalysis
                 "Salt Lake City"
             };
 
+            var colors = new[]
+            {
+                OxyColors.Red,
+                OxyColors.Orange,
+                OxyColors.Blue,
+                OxyColors.Purple,
+                OxyColors.Aquamarine
+            };
+
             var pm = new PlotModel()
             {
                 Background = OxyColors.White,
@@ -140,7 +149,8 @@ namespace ClutterAnalysis
                 var cdfMeasurements = new LineSeries()
                 {
                     StrokeThickness = 3,
-                    Title = names[i]
+                    Title = names[i],
+                    Color = colors[i]
                 };
 
                 var sortedBins = bins.OrderBy(b => b).ToList();
