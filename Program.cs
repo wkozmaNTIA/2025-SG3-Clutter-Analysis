@@ -20,11 +20,14 @@ namespace ClutterAnalysis
         [STAThread]
         static void Main(string[] args)
         {
+            ClutterAnalysis.ClutterHeightComparisionCdf();
+            return;
+
             GenerateHistogramOfBTL();
             return;
 
-            //DumpClutterLossToFile();
-            //return;
+            DumpClutterLossToFile();
+            return;
 
             K182.CompareWithBoulderMeasurements(K182.Environment.MidRise);
             return;
@@ -122,8 +125,8 @@ namespace ClutterAnalysis
         {
             var geodesy = new GeographicLibGeodesy();
 
-            string dir = @"C:\Users\wkozma\Downloads\R23-WP3K-C-0021!P1!ZIP-E";
-            string file = "Boulder_Drexel_GreenMesa_3475_20221216";
+            string dir = @"C:\Users\wkozma\Downloads\R23-WP3K-C-0023!P1!ZIP-E";
+            string file = "SaltLakeCity_Urban_CityCreek_3475_20230710";
             var filepath = Path.Combine(dir, $"{file}.json");
 
             var json = JObject.Parse(File.ReadAllText(filepath));

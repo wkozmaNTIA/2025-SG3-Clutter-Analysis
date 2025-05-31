@@ -1,7 +1,9 @@
-﻿using Ohiopyle.Data.Gdal.Raster;
+﻿using Accord.Statistics;
+using Ohiopyle.Data.Gdal.Raster;
 using Ohiopyle.Geodesy.GeographicLib;
 using OxyPlot;
 using OxyPlot.Axes;
+using OxyPlot.Legends;
 using OxyPlot.Series;
 using Pennsylvania;
 using System;
@@ -19,26 +21,26 @@ namespace ClutterAnalysis
 
         static public void ClutterStatistics()
         {
-            _clutter = new RasterFile(@"C:\Environment\Boulder2020.cltr.tif", new GeographicLibGeodesy());
+            _clutter = new RasterFile(@"C:\Environment\SaltLakeCity2013.Downtown.cltr.tif", new GeographicLibGeodesy());
 
             // representative clutter area
-            double lat_NW = 40.021110;
-            double lon_NW = -105.286948;
-            double lat_SE = 40.017886;
-            double lon_SE = -105.271102;
+            double lat_NW = 40.769452;
+            double lon_NW = -111.899547;
+            double lat_SE = 40.756320;
+            double lon_SE = -111.885306;
 
             // convert to UTM coords
             _clutter.ProjectPoint(lat_NW, lon_NW, out double plat1, out double plon1);
             _clutter.ProjectPoint(lat_SE, lon_SE, out double plat2, out double plon2);
 
             // extract clutter data
-            ExtractClutterAreaValues(plat1, plon1, plat2, plon2, out List<double> heights_c);
+            ExtractClutterAreaValues(plat1, plon1, plat2, plon2, out List<double> heights_c, out double density);
 
             Mathematics.BinData(heights_c.ToArray(), out double[] bins_h, out _, out double[] probabilities_h);
 
             var pm = new PlotModel
             {
-                Title = $"Distribution of Clutter Height in Downtown Boulder",
+                Title = $"Distribution of Clutter Height in Salt Lake City",
                 Subtitle = $"Number of Samples = {heights_c.Count}",
                 Background = OxyColors.White
             };
@@ -72,17 +74,105 @@ namespace ClutterAnalysis
 
             pm.Series.Add(histogramSeries);
 
-            Console.WriteLine($"Average: {heights_c.Average()}");
+            Console.WriteLine($"Clutter Count: {heights_c.Count}");
+            Console.WriteLine($"Mean: {heights_c.Average()}");
+            Console.WriteLine($"Median: {heights_c.ToArray().Median()}");
             Console.WriteLine($"Maximum: {heights_c.Max()}");
+            Console.WriteLine($"St Dev: {heights_c.ToArray().StandardDeviation()}");
+            Console.WriteLine($"IQR: {heights_c.ToArray().LowerQuartile()}-{heights_c.ToArray().UpperQuartile()}");
+            Console.WriteLine($"Density: {density}");
 
             var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
-            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "histogram.png"));
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "SaltLakeCity-Clutter-Distribution.png"));
+
+            // dump clutter heights to csv
+            File.WriteAllText(@"C:\outputs\SaltLakeCity-Clutter-Heights.csv", String.Join(",", heights_c.ToArray()));
+        }
+
+        static public void ClutterHeightComparisionCdf()
+        {
+            var root = @"C:\outputs";
+
+            var files = new[]
+            {
+                "Denver-Clutter-Heights.csv",
+                "Downtown-Boulder-Clutter-Heights.csv",
+                "London-Clutter-Heights.csv",
+                "Martin-Acres-Clutter-Heights.csv",
+                "SaltLakeCity-Clutter-Heights.csv"
+            };
+
+            var names = new[]
+            {
+                "Denver",
+                "Boulder",
+                "London",
+                "Martin Acres",
+                "Salt Lake City"
+            };
+
+            var pm = new PlotModel()
+            {
+                Background = OxyColors.White,
+                Title = $"Comparison of Distribution of Clutter Heights"
+            };
+
+            var xAxis = new LinearAxis();
+            xAxis.Title = "Clutter Height (m)";
+            xAxis.Position = AxisPosition.Bottom;
+            xAxis.MajorGridlineStyle = LineStyle.Solid;
+            xAxis.Maximum = 70;
+            pm.Axes.Add(xAxis);
+
+            var yAxis = new LinearAxis();
+            yAxis.Title = "Cummulative Probability";
+            yAxis.Position = AxisPosition.Left;
+            yAxis.MajorGridlineStyle = LineStyle.Solid;
+            yAxis.MinorGridlineStyle = LineStyle.Solid;
+            pm.Axes.Add(yAxis);
+
+            for (int i = 0; i < files.Length; i++)
+            {
+                var heights = File.ReadAllText(Path.Combine(root, files[i])).Split(',').Select(x => Convert.ToDouble(x)).ToArray();
+
+                Mathematics.BinData(heights.ToArray(), out double[] bins, out _, out double[] probs, 0.1);
+
+                var cdfMeasurements = new LineSeries()
+                {
+                    StrokeThickness = 3,
+                    Title = names[i]
+                };
+
+                var sortedBins = bins.OrderBy(b => b).ToList();
+                double total = 0;
+                for (int j = 0; j < bins.Length; j++)
+                {
+                    // get index in bins of next sorted bin
+                    int k = Array.IndexOf(bins, sortedBins[j]);
+
+                    total += probs[k];
+                    cdfMeasurements.Points.Add(new DataPoint(bins[k], total));
+                }
+                pm.Series.Add(cdfMeasurements);
+            }
+
+            pm.Legends.Add(new Legend()
+            {
+                LegendPosition = LegendPosition.BottomCenter,
+                LegendPlacement = LegendPlacement.Outside,
+                LegendOrientation = LegendOrientation.Horizontal,
+                LegendBorder = OxyColors.Black
+            });
+
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 1000, Height = 600 };
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "Clutter-Height-Comparison.png"));
         }
 
         static void ExtractClutterAreaValues(double plat1, double plon1,
-            double plat2, double plon2, out List<double> heights_c)
+            double plat2, double plon2, out List<double> heights_c, out double density)
         {
             heights_c = new List<double>();
+            int cnt = 0;
 
             // loop through all the pixels
             for (int x = 0; x < _clutter.SizeX; x++)
@@ -98,7 +188,7 @@ namespace ClutterAnalysis
                     {
                         // inside
                         double elev_c = _clutter.GetPixel(x, y);
-
+                        cnt++;
 
                         // only count clutter if 2 meters above terrain
                         if (elev_c > 2)
@@ -106,6 +196,8 @@ namespace ClutterAnalysis
                     }
                 }
             }
+
+            density = heights_c.Count / (double)cnt;
         }
     }
 }
