@@ -20,7 +20,8 @@ namespace ClutterAnalysis
         [STAThread]
         static void Main(string[] args)
         {
-            ClutterAnalysis.ClutterHeightComparisionCdf();
+            //RC1.CurveSetForFrequency(3.5, 3, RC1.Environment.LowRise);
+            RC1.CompareWithBoulderMeasurements(RC1.Environment.LowRise);
             return;
 
             GenerateHistogramOfBTL();
