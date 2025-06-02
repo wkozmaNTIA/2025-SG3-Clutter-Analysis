@@ -82,15 +82,6 @@ namespace ClutterAnalysis
             // equation 11
             double p_FcLOS = p_LOS * p_FcLOS_LOS / 100;
 
-            // NLOS clutter loss
-            // equation 13(a-b)
-            double mu = a_N[0] + b_N[0] * Math.Log(1 + (90 - theta__deg) / 90) + Math.Pow(f__ghz, c_N[0]);
-            double sigma = a_N[1] + b_N[1] * Math.Log(1 + (90 - theta__deg) / 90) + Math.Pow(f__ghz, c_N[1]);
-            NormalDistribution norm = new NormalDistribution(mu, sigma);
-            // equation 12
-            //double p_temp = (100 * p * (1 - p_LOS)) / (100 - p_LOS);
-            double L_clt_NLOS__db = Math.Max(norm.InverseDistributionFunction(p / 100), 6);
-
             double L_clt__db;
             if (0 <= p && p <= p_FcLOS)
             {
@@ -104,6 +95,16 @@ namespace ClutterAnalysis
             }
             else
             {
+                // NLOS clutter loss
+
+                // equation 13(a-b)
+                double mu = a_N[0] + b_N[0] * Math.Log(1 + (90 - theta__deg) / 90) + Math.Pow(f__ghz, c_N[0]);
+                double sigma = a_N[1] + b_N[1] * Math.Log(1 + (90 - theta__deg) / 90) + Math.Pow(f__ghz, c_N[1]);
+                NormalDistribution norm = new NormalDistribution(mu, sigma);
+                // equation 12
+                double p_temp = p / (100 - p_LOS) - 100 * (p / 100 * p_LOS/100) / (100 - p_LOS);//p * (100 - p_LOS) / (100 - p_LOS);
+                double L_clt_NLOS__db = Math.Max(norm.InverseDistributionFunction(p_temp / 100), 6);
+
                 // NLOS
                 L_clt__db = L_clt_NLOS__db;
             }
