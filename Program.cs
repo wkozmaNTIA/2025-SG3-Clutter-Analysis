@@ -21,7 +21,7 @@ namespace ClutterAnalysis
         static void Main(string[] args)
         {
             //RC1.CurveSetForFrequency(3.5, 3, RC1.Environment.LowRise);
-            RC1.CompareWithBoulderMeasurements(RC1.Environment.LowRise);
+            RC2.CompareWithBoulderMeasurements(RC2.Environment.LowRise);
             return;
 
             GenerateHistogramOfBTL();
