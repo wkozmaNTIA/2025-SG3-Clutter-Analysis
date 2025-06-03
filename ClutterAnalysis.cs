@@ -130,7 +130,7 @@ namespace ClutterAnalysis
             xAxis.Title = "Clutter Height (m)";
             xAxis.Position = AxisPosition.Bottom;
             xAxis.MajorGridlineStyle = LineStyle.Solid;
-            xAxis.Maximum = 70;
+            xAxis.Maximum = 60;
             pm.Axes.Add(xAxis);
 
             var yAxis = new LinearAxis();
@@ -174,7 +174,7 @@ namespace ClutterAnalysis
                 LegendBorder = OxyColors.Black
             });
 
-            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 1000, Height = 600 };
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
             OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "Clutter-Height-Comparison.png"));
         }
 

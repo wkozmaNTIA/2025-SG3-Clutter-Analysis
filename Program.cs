@@ -22,10 +22,12 @@ namespace ClutterAnalysis
         static void Main(string[] args)
         {
             //RC1.CurveSetForFrequency(3.5, 3, RC1.Environment.LowRise);
-            RC2.CompareWithBoulderMeasurements(RC2.Environment.LowRise);
+            //RC2.CompareWithUSAMeasurements(RC2.Environment.HighRise);
+            //RC2.CompareWithBristolMeasurements(RC2.Environment.MidRise);
 
-            //TerminalHeightDependence(7, 10, RC2.Environment.HighRise);
-            
+            TerminalHeightDependenceInBoulder();
+            //ClutterAnalysis.ClutterHeightComparisionCdf();
+
             return;
 
             GenerateHistogramOfBTL();
@@ -189,6 +191,77 @@ namespace ClutterAnalysis
 
             var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
             OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "RC2-TerminalHeightDependence.png"));
+        }
+
+        static void TerminalHeightDependenceInBoulder()
+        {
+            double f__ghz = 3.5;
+            double h__meter = 20;
+            var env = RC2.Environment.HighRise;
+
+            var pm = new PlotModel()
+            {
+                Background = OxyColors.White,
+                Title = $"Terminal Height Dependence in Denver",
+                Subtitle = $"RC2 Model; f = {f__ghz} GHz; h = {h__meter} m; env = {env.ToString()}"
+            };
+
+            var xAxis = new LinearAxis();
+            xAxis.Title = "Clutter Loss (dB)";
+            xAxis.Position = AxisPosition.Bottom;
+            xAxis.MajorGridlineStyle = LineStyle.Solid;
+            xAxis.Maximum = 50;
+            pm.Axes.Add(xAxis);
+
+            var yAxis = new LinearAxis();
+            yAxis.Title = "Cummulative Probability";
+            yAxis.Position = AxisPosition.Left;
+            yAxis.MajorGridlineStyle = LineStyle.Solid;
+            pm.Axes.Add(yAxis);
+
+            // loop through each of the elevation angles
+            for (int theta__deg = 0; theta__deg <= 90; theta__deg += 10)
+            {
+                var losses = new List<double>();
+
+                // loop through each of the location p's
+                for (double p = 0.01; p < 100; p += 0.01)
+                {
+                    double L_ces__db = RC2.Invoke(f__ghz, theta__deg, p, h__meter, env);
+                    losses.Add(L_ces__db);
+                }
+
+                Mathematics.BinData(losses.ToArray(), out double[] bins, out _, out double[] probs, 0.1);
+
+                var cdfSeries = new LineSeries()
+                {
+                    StrokeThickness = 2,
+                    Title = $"{theta__deg} deg"
+                };
+
+                var sortedBins = bins.OrderBy(b => b).ToList();
+                double total = 0;
+                for (int i = 0; i < bins.Length; i++)
+                {
+                    // get index in bins of next sorted bin
+                    int j = Array.IndexOf(bins, sortedBins[i]);
+
+                    total += probs[j];
+                    cdfSeries.Points.Add(new DataPoint(bins[j], total));
+                }
+                pm.Series.Add(cdfSeries);
+            }
+
+            pm.Legends.Add(new Legend()
+            {
+                LegendPosition = LegendPosition.RightTop,
+                LegendPlacement = LegendPlacement.Outside,
+                LegendOrientation = LegendOrientation.Vertical,
+                LegendBorder = OxyColors.Black
+            });
+
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "RC2-TerminalHeightDependenceInDenver.png"));
         }
 
         static void GenerateHistogramOfBTL()
