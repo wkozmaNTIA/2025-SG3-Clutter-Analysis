@@ -98,7 +98,10 @@ namespace ClutterAnalysis
             if (0 <= p && p <= p_FcLOS)
             {
                 // equation 15
-                L_clt__db = Math.Log10(p / p_FcLOS) / Math.Log10(30);
+                //L_clt__db = Math.Log10(p / p_FcLOS) / Math.Log10(30);
+
+                // equation 15, proposed revised
+                L_clt__db = -3.542 * Math.Exp(-155.1 * p / p_FcLOS) + -1.06 * Math.Exp(-6.342 * p / p_FcLOS);
             }
             else if (p <= p_LOS)
             {
@@ -200,12 +203,12 @@ namespace ClutterAnalysis
         {
             var geodesy = new GeographicLibGeodesy();
 
-            var filepath = @"C:\Users\wkozma\Desktop\JWG-Clutter\input-documents\USA-Measurements\SaltLakeCity_Urban_CityCreek_3475_20230710.json";
+            var filepath = @"C:\Users\wkozma\Desktop\JWG-Clutter\input-documents\USA-Measurements\SaltLakeCity_Urban_Ensign_3475_20230710.json";
 
             var json = JObject.Parse(File.ReadAllText(filepath));
 
-            double lowDeg = 5.5;
-            double highDeg = 8;
+            double lowDeg = 3.5;
+            double highDeg = 5.5;
             double f__ghz = 3.475;
 
             var losses = new List<double>();
@@ -230,7 +233,7 @@ namespace ClutterAnalysis
             var pm = new PlotModel()
             {
                 Background = OxyColors.White,
-                Title = $"CityCreek-SLC 3475 MHz Comparison",
+                Title = $"Ensign-SLC 3475 MHz Comparison",
                 Subtitle = $"RC2 Model; env = {env.ToString()}"
             };
 

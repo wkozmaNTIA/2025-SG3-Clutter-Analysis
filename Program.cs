@@ -22,10 +22,11 @@ namespace ClutterAnalysis
         static void Main(string[] args)
         {
             //RC1.CurveSetForFrequency(3.5, 3, RC1.Environment.LowRise);
-            //RC2.CompareWithUSAMeasurements(RC2.Environment.HighRise);
+            RC2.CompareWithUSAMeasurements(RC2.Environment.HighRise);
             //RC2.CompareWithBristolMeasurements(RC2.Environment.MidRise);
 
-            TerminalHeightDependenceInBoulder();
+            //TerminalHeightDependenceInBoulder();
+            //ClutterAnalysis.ClutterStatistics();
             //ClutterAnalysis.ClutterHeightComparisionCdf();
 
             return;

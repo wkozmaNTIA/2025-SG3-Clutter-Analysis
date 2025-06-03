@@ -21,13 +21,13 @@ namespace ClutterAnalysis
 
         static public void ClutterStatistics()
         {
-            _clutter = new RasterFile(@"C:\Environment\SaltLakeCity2013.Downtown.cltr.tif", new GeographicLibGeodesy());
+            _clutter = new RasterFile(@"C:\Environment\Manchester\SJ8095_P_10661_20200205_20200310.laz.cltr.tif", new GeographicLibGeodesy());
 
             // representative clutter area
-            double lat_NW = 40.769452;
-            double lon_NW = -111.899547;
-            double lat_SE = 40.756320;
-            double lon_SE = -111.885306;
+            double lat_NW = 53.487047;
+            double lon_NW = -2.257431;
+            double lat_SE = 53.474919;
+            double lon_SE = -2.232802;
 
             // convert to UTM coords
             _clutter.ProjectPoint(lat_NW, lon_NW, out double plat1, out double plon1);
@@ -40,7 +40,7 @@ namespace ClutterAnalysis
 
             var pm = new PlotModel
             {
-                Title = $"Distribution of Clutter Height in Salt Lake City",
+                Title = $"Distribution of Clutter Height in Manchester, UK",
                 Subtitle = $"Number of Samples = {heights_c.Count}",
                 Background = OxyColors.White
             };
@@ -83,10 +83,10 @@ namespace ClutterAnalysis
             Console.WriteLine($"Density: {density}");
 
             var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
-            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "SaltLakeCity-Clutter-Distribution.png"));
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "Manchester-Clutter-Distribution.png"));
 
             // dump clutter heights to csv
-            File.WriteAllText(@"C:\outputs\SaltLakeCity-Clutter-Heights.csv", String.Join(",", heights_c.ToArray()));
+            File.WriteAllText(@"C:\outputs\Manchester-Clutter-Heights.csv", String.Join(",", heights_c.ToArray()));
         }
 
         static public void ClutterHeightComparisionCdf()
@@ -99,7 +99,10 @@ namespace ClutterAnalysis
                 "Downtown-Boulder-Clutter-Heights.csv",
                 "London-Clutter-Heights.csv",
                 "Martin-Acres-Clutter-Heights.csv",
-                "SaltLakeCity-Clutter-Heights.csv"
+                "SaltLakeCity-Clutter-Heights.csv",
+                "Bristol-Clutter-Heights.csv",
+                "Birmingham-Clutter-Heights.csv",
+                "Manchester-Clutter-Heights.csv"
             };
 
             var names = new[]
@@ -108,7 +111,10 @@ namespace ClutterAnalysis
                 "Boulder",
                 "London",
                 "Martin Acres",
-                "Salt Lake City"
+                "Salt Lake City",
+                "Bristol",
+                "Birmingham",
+                "Manchester"
             };
 
             var colors = new[]
@@ -117,7 +123,10 @@ namespace ClutterAnalysis
                 OxyColors.Orange,
                 OxyColors.Blue,
                 OxyColors.Purple,
-                OxyColors.Aquamarine
+                OxyColors.Aquamarine,
+                OxyColors.HotPink,
+                OxyColors.Brown,
+                OxyColors.Silver
             };
 
             var pm = new PlotModel()
@@ -174,7 +183,7 @@ namespace ClutterAnalysis
                 LegendBorder = OxyColors.Black
             });
 
-            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 1000, Height = 600 };
             OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "Clutter-Height-Comparison.png"));
         }
 
