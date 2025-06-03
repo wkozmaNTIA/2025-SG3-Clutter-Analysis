@@ -184,9 +184,13 @@ namespace ClutterAnalysis
         {
             var geodesy = new GeographicLibGeodesy();
 
-            var filepath = @"C:\Users\wkozma\Desktop\JWG-Clutter\input-documents\R23-WP3K-C-0148!P1!ZIP-E\Boulder_MartinAcres_GreenMesa_7601_20241114.json";
+            var filepath = @"C:\Users\wkozma\Desktop\JWG-Clutter\input-documents\USA-Measurements\Boulder_MartinAcres_GreenMesa_7601_20241114.json";
 
             var json = JObject.Parse(File.ReadAllText(filepath));
+
+            double lowDeg = 3;
+            double highDeg = 6;
+            double f__ghz = 7.601;
 
             var losses = new List<double>();
             foreach (var pt in json["datapoints"])
@@ -249,62 +253,62 @@ namespace ClutterAnalysis
             }
             pm.Series.Add(cdfMeasurements);
 
-            var losses_3deg = new List<double>();
-            var losses_6deg = new List<double>();
+            var losses_LowDeg = new List<double>();
+            var losses_HighDeg = new List<double>();
 
             // loop through each of the location p's
             for (double p = 0.01; p < 100; p += 0.01)
             {
-                double L_ces__db = RC2.Invoke(7.601, 3, p, 2.82, env);
-                losses_3deg.Add(L_ces__db);
+                double L_ces__db = RC2.Invoke(f__ghz, lowDeg, p, 2.82, env);
+                losses_LowDeg.Add(L_ces__db);
 
-                L_ces__db = RC2.Invoke(7.601, 6, p, 2.82, env);
-                losses_6deg.Add(L_ces__db);
+                L_ces__db = RC2.Invoke(f__ghz, highDeg, p, 2.82, env);
+                losses_HighDeg.Add(L_ces__db);
             }
 
-            Mathematics.BinData(losses_3deg.ToArray(), out double[] bins_3deg, out _, out double[] probs_3deg, 0.1);
-            Mathematics.BinData(losses_6deg.ToArray(), out double[] bins_6deg, out _, out double[] probs_6deg, 0.1);
+            Mathematics.BinData(losses_LowDeg.ToArray(), out double[] bins_LowDeg, out _, out double[] probs_LowDeg, 0.1);
+            Mathematics.BinData(losses_HighDeg.ToArray(), out double[] bins_HighDeg, out _, out double[] probs_HighDeg, 0.1);
 
-            var cdfSeries_3deg = new LineSeries()
+            var cdfSeries_LowDeg = new LineSeries()
             {
                 StrokeThickness = 2,
-                Title = $"3°",
+                Title = $"{lowDeg}°",
                 Color = OxyColors.Purple,
                 LineStyle = LineStyle.Dash
             };
-            var cdfSeries_6deg = new LineSeries()
+            var cdfSeries_HighDeg = new LineSeries()
             {
                 StrokeThickness = 2,
-                Title = $"6°",
+                Title = $"{highDeg}°",
                 Color = OxyColors.Green,
                 LineStyle = LineStyle.Dash
             };
 
-            var sortedBins_3deg = bins_3deg.OrderBy(b => b).ToList();
-            var sortedBins_6deg = bins_6deg.OrderBy(b => b).ToList();
+            var sortedBins_3deg = bins_LowDeg.OrderBy(b => b).ToList();
+            var sortedBins_6deg = bins_HighDeg.OrderBy(b => b).ToList();
 
             total = 0;
-            for (int i = 0; i < bins_3deg.Length; i++)
+            for (int i = 0; i < bins_LowDeg.Length; i++)
             {
                 // get index in bins of next sorted bin
-                int j = Array.IndexOf(bins_3deg, sortedBins_3deg[i]);
+                int j = Array.IndexOf(bins_LowDeg, sortedBins_3deg[i]);
 
-                total += probs_3deg[j];
-                cdfSeries_3deg.Points.Add(new DataPoint(bins_3deg[j], total));
+                total += probs_LowDeg[j];
+                cdfSeries_LowDeg.Points.Add(new DataPoint(bins_LowDeg[j], total));
             }
 
             total = 0;
-            for (int i = 0; i < bins_6deg.Length; i++)
+            for (int i = 0; i < bins_HighDeg.Length; i++)
             {
                 // get index in bins of next sorted bin
-                int j = Array.IndexOf(bins_6deg, sortedBins_6deg[i]);
+                int j = Array.IndexOf(bins_HighDeg, sortedBins_6deg[i]);
 
-                total += probs_6deg[j];
-                cdfSeries_6deg.Points.Add(new DataPoint(bins_6deg[j], total));
+                total += probs_HighDeg[j];
+                cdfSeries_HighDeg.Points.Add(new DataPoint(bins_HighDeg[j], total));
             }
 
-            pm.Series.Add(cdfSeries_3deg);
-            pm.Series.Add(cdfSeries_6deg);
+            pm.Series.Add(cdfSeries_LowDeg);
+            pm.Series.Add(cdfSeries_HighDeg);
 
             pm.Legends.Add(new Legend()
             {

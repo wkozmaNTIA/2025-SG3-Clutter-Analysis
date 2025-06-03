@@ -3,6 +3,7 @@ using Ohiopyle.Geodesy.GeographicLib;
 using OxyPlot;
 using OxyPlot.Annotations;
 using OxyPlot.Axes;
+using OxyPlot.Legends;
 using OxyPlot.Series;
 using Pennsylvania;
 using Pennsylvania.Propagation;
@@ -22,6 +23,9 @@ namespace ClutterAnalysis
         {
             //RC1.CurveSetForFrequency(3.5, 3, RC1.Environment.LowRise);
             RC2.CompareWithBoulderMeasurements(RC2.Environment.LowRise);
+
+            //TerminalHeightDependence(7, 10, RC2.Environment.HighRise);
+            
             return;
 
             GenerateHistogramOfBTL();
@@ -51,6 +55,140 @@ namespace ClutterAnalysis
             }
 
             MeasurementSummary.BoulderData();
+        }
+
+        static void FrequencyCurveSet(double h__meter, double theta__deg, RC2.Environment env)
+        {
+            var pm = new PlotModel()
+            {
+                Background = OxyColors.White,
+                Title = $"Cumulative distribution of clutter loss for {theta__deg} degrees",
+                Subtitle = $"RC2 Model; h = {h__meter}; env = {env.ToString()}"
+            };
+
+            var xAxis = new LinearAxis();
+            xAxis.Title = "Clutter Loss (dB)";
+            xAxis.Position = AxisPosition.Bottom;
+            xAxis.MajorGridlineStyle = LineStyle.Solid;
+            xAxis.Maximum = 50;
+            pm.Axes.Add(xAxis);
+
+            var yAxis = new LinearAxis();
+            yAxis.Title = "Cummulative Probability";
+            yAxis.Position = AxisPosition.Left;
+            yAxis.MajorGridlineStyle = LineStyle.Solid;
+            pm.Axes.Add(yAxis);
+
+            // loop through each of the elevation angles
+            for (int f__ghz = 1; f__ghz <= 30; f__ghz += 4)
+            {
+                var losses = new List<double>();
+
+                // loop through each of the location p's
+                for (double p = 0.01; p < 100; p += 0.01)
+                {
+                    double L_ces__db = RC2.Invoke(f__ghz, theta__deg, p, h__meter, env);
+                    losses.Add(L_ces__db);
+                }
+
+                Mathematics.BinData(losses.ToArray(), out double[] bins, out _, out double[] probs, 0.1);
+
+                var cdfSeries = new LineSeries()
+                {
+                    StrokeThickness = 2,
+                    Title = $"{f__ghz} GHz"
+                };
+
+                var sortedBins = bins.OrderBy(b => b).ToList();
+                double total = 0;
+                for (int i = 0; i < bins.Length; i++)
+                {
+                    // get index in bins of next sorted bin
+                    int j = Array.IndexOf(bins, sortedBins[i]);
+
+                    total += probs[j];
+                    cdfSeries.Points.Add(new DataPoint(bins[j], total));
+                }
+                pm.Series.Add(cdfSeries);
+            }
+
+            pm.Legends.Add(new Legend()
+            {
+                LegendPosition = LegendPosition.RightTop,
+                LegendPlacement = LegendPlacement.Outside,
+                LegendOrientation = LegendOrientation.Vertical,
+                LegendBorder = OxyColors.Black
+            });
+
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "RC2-FreqeuncyCurves.png"));
+        }
+
+        static void TerminalHeightDependence(double f__ghz, double theta__deg, RC2.Environment env)
+        {
+            var pm = new PlotModel()
+            {
+                Background = OxyColors.White,
+                Title = $"Terminal Height Dependence",
+                Subtitle = $"RC2 Model; f = {f__ghz} GHz; theta = {theta__deg}; env = {env.ToString()}"
+            };
+
+            var xAxis = new LinearAxis();
+            xAxis.Title = "Clutter Loss (dB)";
+            xAxis.Position = AxisPosition.Bottom;
+            xAxis.MajorGridlineStyle = LineStyle.Solid;
+            xAxis.Maximum = 50;
+            pm.Axes.Add(xAxis);
+
+            var yAxis = new LinearAxis();
+            yAxis.Title = "Cummulative Probability";
+            yAxis.Position = AxisPosition.Left;
+            yAxis.MajorGridlineStyle = LineStyle.Solid;
+            pm.Axes.Add(yAxis);
+
+            // loop through each of the elevation angles
+            for (int h__meter = 1; h__meter <= 30; h__meter += 3)
+            {
+                var losses = new List<double>();
+
+                // loop through each of the location p's
+                for (double p = 0.01; p < 100; p += 0.01)
+                {
+                    double L_ces__db = RC2.Invoke(f__ghz, theta__deg, p, h__meter, env);
+                    losses.Add(L_ces__db);
+                }
+
+                Mathematics.BinData(losses.ToArray(), out double[] bins, out _, out double[] probs, 0.1);
+
+                var cdfSeries = new LineSeries()
+                {
+                    StrokeThickness = 2,
+                    Title = $"{h__meter} m"
+                };
+
+                var sortedBins = bins.OrderBy(b => b).ToList();
+                double total = 0;
+                for (int i = 0; i < bins.Length; i++)
+                {
+                    // get index in bins of next sorted bin
+                    int j = Array.IndexOf(bins, sortedBins[i]);
+
+                    total += probs[j];
+                    cdfSeries.Points.Add(new DataPoint(bins[j], total));
+                }
+                pm.Series.Add(cdfSeries);
+            }
+
+            pm.Legends.Add(new Legend()
+            {
+                LegendPosition = LegendPosition.RightTop,
+                LegendPlacement = LegendPlacement.Outside,
+                LegendOrientation = LegendOrientation.Vertical,
+                LegendBorder = OxyColors.Black
+            });
+
+            var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "RC2-TerminalHeightDependence.png"));
         }
 
         static void GenerateHistogramOfBTL()
