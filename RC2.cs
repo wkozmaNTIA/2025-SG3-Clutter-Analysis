@@ -5,6 +5,7 @@ using OxyPlot.Axes;
 using OxyPlot.Legends;
 using OxyPlot.Series;
 using Pennsylvania;
+using Pennsylvania.Propagation;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -184,12 +185,12 @@ namespace ClutterAnalysis
         {
             var geodesy = new GeographicLibGeodesy();
 
-            var filepath = @"C:\Users\wkozma\Desktop\JWG-Clutter\input-documents\USA-Measurements\Boulder_MartinAcres_GreenMesa_7601_20241114.json";
+            var filepath = @"C:\Users\wkozma\Desktop\JWG-Clutter\input-documents\USA-Measurements\Boulder_Downtown_GreenMesa_7601_20241114.json";
 
             var json = JObject.Parse(File.ReadAllText(filepath));
 
-            double lowDeg = 3;
-            double highDeg = 6;
+            double lowDeg = 2;
+            double highDeg = 4;
             double f__ghz = 7.601;
 
             var losses = new List<double>();
@@ -214,7 +215,7 @@ namespace ClutterAnalysis
             var pm = new PlotModel()
             {
                 Background = OxyColors.White,
-                Title = $"Martin Acres 7601 MHz Comparison",
+                Title = $"Downtown Boulder 7601 MHz Comparison",
                 Subtitle = $"RC2 Model; env = {env.ToString()}"
             };
 
@@ -255,6 +256,7 @@ namespace ClutterAnalysis
 
             var losses_LowDeg = new List<double>();
             var losses_HighDeg = new List<double>();
+            var losses_AvgDeg = new List<double>();
 
             // loop through each of the location p's
             for (double p = 0.01; p < 100; p += 0.01)
@@ -264,6 +266,9 @@ namespace ClutterAnalysis
 
                 L_ces__db = RC2.Invoke(f__ghz, highDeg, p, 2.82, env);
                 losses_HighDeg.Add(L_ces__db);
+
+                L_ces__db = RC2.Invoke(f__ghz, (lowDeg + highDeg) / 2, p, 2.82, env);
+                losses_AvgDeg.Add(L_ces__db);
             }
 
             Mathematics.BinData(losses_LowDeg.ToArray(), out double[] bins_LowDeg, out _, out double[] probs_LowDeg, 0.1);
@@ -310,6 +315,38 @@ namespace ClutterAnalysis
             pm.Series.Add(cdfSeries_LowDeg);
             pm.Series.Add(cdfSeries_HighDeg);
 
+            var cdfSeries_P2108 = new LineSeries()
+            {
+                StrokeThickness = 2,
+                Title = $"P.2108",
+                Color = OxyColors.Black,
+                LineStyle = LineStyle.Dot
+            };
+
+            var L_P2108__db = new List<Double>();
+
+            // loop through each of the location p's
+            for (double p = 0.01; p < 100; p += 0.01)
+            {
+                P2108.AeronauticalStatisticalModel(f__ghz, (lowDeg + highDeg) / 2, p, out double L_P2108_ces__db);
+                L_P2108__db.Add(L_P2108_ces__db);
+            }
+            Mathematics.BinData(L_P2108__db.ToArray(), out double[] bins_P2108, out _, out double[] probs_P2108, 0.1);
+
+            var sortedBins_P2108 = bins_P2108.OrderBy(b => b).ToList();
+
+            total = 0;
+            for (int i = 0; i < bins_P2108.Length; i++)
+            {
+                // get index in bins of next sorted bin
+                int j = Array.IndexOf(bins_P2108, sortedBins_P2108[i]);
+
+                total += probs_P2108[j];
+                cdfSeries_P2108.Points.Add(new DataPoint(bins_P2108[j], total));
+            }
+
+            pm.Series.Add(cdfSeries_P2108);
+
             pm.Legends.Add(new Legend()
             {
                 LegendPosition = LegendPosition.BottomCenter,
@@ -320,6 +357,18 @@ namespace ClutterAnalysis
 
             var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
             OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "RC2-BoulderMeasurements.png"));
+
+            // print out statistics
+            losses_AvgDeg.Sort();
+            losses.Sort();
+            var markers = new[] { 0.001, 0.002, 0.005 };
+            Console.WriteLine("%\tModel\tData\tDelta");
+            for (int i = 0; i < 3; i++)
+                for (int j = 0; j < markers.Length; j++)
+                    Console.WriteLine($"{markers[j] * Math.Pow(10, i) * 100}%\t" +
+                                      $"{losses_AvgDeg[Convert.ToInt32(losses_AvgDeg.Count * markers[j] * Math.Pow(10, i))]:0.00}\t" +
+                                      $"{losses[Convert.ToInt32(losses.Count * markers[j] * Math.Pow(10, i))]:0.00}\t" +
+                                      $"{losses_AvgDeg[Convert.ToInt32(losses_AvgDeg.Count * markers[j] * Math.Pow(10, i))] - losses[Convert.ToInt32(losses.Count * markers[j] * Math.Pow(10, i))]:0.00}");
         }
     }
 }
