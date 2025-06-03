@@ -203,24 +203,24 @@ namespace ClutterAnalysis
         {
             var geodesy = new GeographicLibGeodesy();
 
-            var filepath = @"C:\Users\wkozma\Desktop\JWG-Clutter\input-documents\USA-Measurements\SaltLakeCity_Urban_Ensign_3475_20230710.json";
+            var filepath = @"C:\Users\wkozma\Desktop\JWG-Clutter\input-documents\USA-Measurements\Boulder_Downtown_GreenMesa_7601_20241114.json";
 
             var json = JObject.Parse(File.ReadAllText(filepath));
 
-            double lowDeg = 3.5;
-            double highDeg = 5.5;
-            double f__ghz = 3.475;
+            double lowDeg = 2;
+            double highDeg = 4;
+            double f__ghz = 7.601;
 
             var losses = new List<double>();
-            foreach (var pt in json["measurements"])
+            foreach (var pt in json["datapoints"])
             {
-                double txLat = Convert.ToDouble(json["metadata"]["TxLat"]);
-                double txLon = Convert.ToDouble(json["metadata"]["TxLon"]);
-                double rxLat = Convert.ToDouble(pt["RxLat"]);
-                double rxLon = Convert.ToDouble(pt["RxLon"]);
+                double txLat = Convert.ToDouble(pt["tx_lat__deg"]);
+                double txLon = Convert.ToDouble(pt["tx_lon__deg"]);
+                double rxLat = Convert.ToDouble(pt["rx_lat__deg"]);
+                double rxLon = Convert.ToDouble(pt["rx_lon__deg"]);
 
-                double L_btl__db = Convert.ToDouble(pt["L_btl__db"]);
-                double f__mhz = Convert.ToDouble(json["metadata"]["f__mhz"]);
+                double L_btl__db = Convert.ToDouble(pt["L_btl__dB"]);
+                double f__mhz = Convert.ToDouble(pt["f__MHz"]);
 
                 double d__km = geodesy.Distance(txLat, txLon, rxLat, rxLon) / 1000;
 
@@ -233,7 +233,7 @@ namespace ClutterAnalysis
             var pm = new PlotModel()
             {
                 Background = OxyColors.White,
-                Title = $"Ensign-SLC 3475 MHz Comparison",
+                Title = $"Downtown Boulder 7601 MHz Comparison",
                 Subtitle = $"RC2 Model; env = {env.ToString()}"
             };
 
