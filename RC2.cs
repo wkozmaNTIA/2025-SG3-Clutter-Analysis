@@ -75,7 +75,7 @@ namespace ClutterAnalysis
             double C_e = a_c[(int)env] * h__meter + b_c[(int)env];
             double k = Math.Pow((h__meter + a_k[(int)env]) / b_k[(int)env], c_k[(int)env]);
             // equation 7
-            double p_LOS = V_max * ((1 - Math.Exp(-k * (theta__deg + C_e) / 90)) / (1 - Math.Exp(-k * (90 + C_e) / 90)));
+            double p_LOS = Math.Min(Math.Max(V_max * ((1 - Math.Exp(-k * (theta__deg + C_e) / 90)) / (1 - Math.Exp(-k * (90 + C_e) / 90))), 100), 0);
 
             // compute conditional probability of FcLOS | LOS
             ///////////////////////////////////////////////////

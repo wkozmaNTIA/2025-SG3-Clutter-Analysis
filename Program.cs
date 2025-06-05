@@ -25,6 +25,8 @@ namespace ClutterAnalysis
             //RC2.CompareWithUSAMeasurements(RC2.Environment.MidRise);
             //RC2.CompareWithBristolMeasurements(RC2.Environment.MidRise);
 
+            RC2.Invoke(5, 1, 0.01, 5, RC2.Environment.HighRise);
+
             ExamplePlotsForRecText();
 
             //TerminalHeightDependenceInBoulder();
