@@ -25,7 +25,7 @@ namespace ClutterAnalysis
             //RC2.CompareWithUSAMeasurements(RC2.Environment.MidRise);
             //RC2.CompareWithBristolMeasurements(RC2.Environment.MidRise);
 
-            RC2.Invoke(5, 1, 0.01, 5, RC2.Environment.HighRise);
+            P2108Revision.Invoke(5, 1, 0.01, 5, P2108Revision.Environment.HighRise);
 
             ExamplePlotsForRecText();
 
@@ -68,7 +68,7 @@ namespace ClutterAnalysis
         {
             double f__ghz = 30;
             double h__meter = 18;
-            var env = RC2.Environment.HighRise;
+            var env = P2108Revision.Environment.HighRise;
 
             var pm = new PlotModel()
             {
@@ -106,7 +106,7 @@ namespace ClutterAnalysis
                 // loop through each of the location p's
                 for (double p = 0.01; p < 100; p += 0.01)
                 {
-                    double L_ces__db = RC2.Invoke(f__ghz, theta__deg, p, h__meter, env);
+                    double L_ces__db = P2108Revision.Invoke(f__ghz, theta__deg, p, h__meter, env);
                     losses.Add(L_ces__db);
                 }
 
@@ -145,7 +145,7 @@ namespace ClutterAnalysis
             OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "Rec-Example-Fig.png"));
         }
 
-        static void FrequencyCurveSet(double h__meter, double theta__deg, RC2.Environment env)
+        static void FrequencyCurveSet(double h__meter, double theta__deg, P2108Revision.Environment env)
         {
             var pm = new PlotModel()
             {
@@ -175,7 +175,7 @@ namespace ClutterAnalysis
                 // loop through each of the location p's
                 for (double p = 0.01; p < 100; p += 0.01)
                 {
-                    double L_ces__db = RC2.Invoke(f__ghz, theta__deg, p, h__meter, env);
+                    double L_ces__db = P2108Revision.Invoke(f__ghz, theta__deg, p, h__meter, env);
                     losses.Add(L_ces__db);
                 }
 
@@ -212,7 +212,7 @@ namespace ClutterAnalysis
             OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "RC2-FreqeuncyCurves.png"));
         }
 
-        static void TerminalHeightDependence(double f__ghz, double theta__deg, RC2.Environment env)
+        static void TerminalHeightDependence(double f__ghz, double theta__deg, P2108Revision.Environment env)
         {
             var pm = new PlotModel()
             {
@@ -242,7 +242,7 @@ namespace ClutterAnalysis
                 // loop through each of the location p's
                 for (double p = 0.01; p < 100; p += 0.01)
                 {
-                    double L_ces__db = RC2.Invoke(f__ghz, theta__deg, p, h__meter, env);
+                    double L_ces__db = P2108Revision.Invoke(f__ghz, theta__deg, p, h__meter, env);
                     losses.Add(L_ces__db);
                 }
 
@@ -283,7 +283,7 @@ namespace ClutterAnalysis
         {
             double f__ghz = 3.5;
             double h__meter = 20;
-            var env = RC2.Environment.HighRise;
+            var env = P2108Revision.Environment.HighRise;
 
             var pm = new PlotModel()
             {
@@ -313,7 +313,7 @@ namespace ClutterAnalysis
                 // loop through each of the location p's
                 for (double p = 0.01; p < 100; p += 0.01)
                 {
-                    double L_ces__db = RC2.Invoke(f__ghz, theta__deg, p, h__meter, env);
+                    double L_ces__db = P2108Revision.Invoke(f__ghz, theta__deg, p, h__meter, env);
                     losses.Add(L_ces__db);
                 }
 

@@ -13,7 +13,7 @@ using System.Linq;
 
 namespace ClutterAnalysis
 {
-    internal class RC2
+    internal class P2108Revision
     {
         static OxyColor[] _colors = new[]
         {
@@ -159,7 +159,7 @@ namespace ClutterAnalysis
                 // loop through each of the location p's
                 for (double p = 0.01; p < 100; p += 0.01)
                 {
-                    double L_ces__db = RC2.Invoke(f__ghz, theta__deg, p, h__meter, env);
+                    double L_ces__db = P2108Revision.Invoke(f__ghz, theta__deg, p, h__meter, env);
                     losses.Add(L_ces__db);
                 }
 
@@ -276,13 +276,13 @@ namespace ClutterAnalysis
             // loop through each of the location p's
             for (double p = 0.01; p < 100; p += 0.01)
             {
-                double L_ces__db = RC2.Invoke(f__ghz, lowDeg, p, 2.82, env);
+                double L_ces__db = P2108Revision.Invoke(f__ghz, lowDeg, p, 2.82, env);
                 losses_LowDeg.Add(L_ces__db);
 
-                L_ces__db = RC2.Invoke(f__ghz, highDeg, p, 2.82, env);
+                L_ces__db = P2108Revision.Invoke(f__ghz, highDeg, p, 2.82, env);
                 losses_HighDeg.Add(L_ces__db);
 
-                L_ces__db = RC2.Invoke(f__ghz, (lowDeg + highDeg) / 2, p, 2.82, env);
+                L_ces__db = P2108Revision.Invoke(f__ghz, (lowDeg + highDeg) / 2, p, 2.82, env);
                 losses_AvgDeg.Add(L_ces__db);
             }
 
@@ -424,7 +424,7 @@ namespace ClutterAnalysis
                 // loop through each of the location p's
                 for (double p = 0.01; p < 100; p += 0.01)
                 {
-                    double L_RC2_ces__db = RC2.Invoke(f__ghz, theta__deg, p, h__meter, env);
+                    double L_RC2_ces__db = P2108Revision.Invoke(f__ghz, theta__deg, p, h__meter, env);
                     L_RC2__db.Add(L_RC2_ces__db);
 
                     P2108.AeronauticalStatisticalModel(f__ghz, theta__deg, p, out double L_P2108_ces__db);
