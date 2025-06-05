@@ -75,7 +75,7 @@ namespace ClutterAnalysis
             double C_e = a_c[(int)env] * h__meter + b_c[(int)env];
             double k = Math.Pow((h__meter + a_k[(int)env]) / b_k[(int)env], c_k[(int)env]);
             // equation 7
-            double p_LOS = Math.Min(Math.Max(V_max * ((1 - Math.Exp(-k * (theta__deg + C_e) / 90)) / (1 - Math.Exp(-k * (90 + C_e) / 90))), 100), 0);
+            double p_LOS = Math.Max(V_max * ((1 - Math.Exp(-k * (theta__deg + C_e) / 90)) / (1 - Math.Exp(-k * (90 + C_e) / 90))), 0);
 
             // compute conditional probability of FcLOS | LOS
             ///////////////////////////////////////////////////
@@ -88,7 +88,7 @@ namespace ClutterAnalysis
                               c_cprime[(int)env];
             double V_maxprime = Math.Min(a_vprime[(int)env] * h__meter + b_vprime[(int)env], 0) * Math.Pow(f__ghz, -0.55) + 100;
             // equation 9
-            double p_FcLOS_LOS = V_maxprime * ((1 - Math.Exp(-kprime * (theta__deg + C_eprime) / 90)) / (1 - Math.Exp(-kprime * (90 + C_eprime) / 90)));
+            double p_FcLOS_LOS = Math.Max(V_maxprime * ((1 - Math.Exp(-kprime * (theta__deg + C_eprime) / 90)) / (1 - Math.Exp(-kprime * (90 + C_eprime) / 90))), 0);
 
             // probability of being Fresnel clear LOS
             // equation 11
@@ -98,9 +98,6 @@ namespace ClutterAnalysis
             if (0 <= p && p <= p_FcLOS)
             {
                 // equation 15
-                //L_clt__db = Math.Log10(p / p_FcLOS) / Math.Log10(30);
-
-                // equation 15, proposed revised
                 L_clt__db = -3.542 * Math.Exp(-155.1 * p / p_FcLOS) + -1.06 * Math.Exp(-6.342 * p / p_FcLOS);
             }
             else if (p <= p_LOS)
