@@ -114,7 +114,7 @@ namespace ClutterAnalysis
                 double sigma = a_N[1] + b_N[1] * Math.Log(1 + (90 - theta__deg) / 90) + Math.Pow(f__ghz, c_N[1]);
                 // equation 12
                 double p_prime = (p - p_LOS) / (100 - p_LOS);
-                double q = InverseComplementaryCumulativeDistribution.Invoke(p_prime);
+                double q = InverseComplementaryCumulativeDistribution.Invoke(1 - p_prime);
                 double L = mu + q * sigma;
                 double L_clt_NLOS__db = Math.Max(L, 6);
 

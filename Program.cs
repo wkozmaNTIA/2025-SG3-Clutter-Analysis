@@ -25,7 +25,7 @@ namespace ClutterAnalysis
             //RC2.CompareWithUSAMeasurements(RC2.Environment.MidRise);
             //RC2.CompareWithBristolMeasurements(RC2.Environment.MidRise);
 
-            P2108Revision.Invoke(5, 1, 0.01, 5, P2108Revision.Environment.HighRise);
+            var L_c__db = P2108Revision.Invoke(3, 80, 82, 5, P2108Revision.Environment.LowRise);
 
             ExamplePlotsForRecText();
 
@@ -66,15 +66,15 @@ namespace ClutterAnalysis
 
         static void ExamplePlotsForRecText()
         {
-            double f__ghz = 30;
-            double h__meter = 18;
-            var env = P2108Revision.Environment.HighRise;
+            double f__ghz = 3;
+            double h__meter = 5;
+            var env = P2108Revision.Environment.LowRise;
 
             var pm = new PlotModel()
             {
                 Background = OxyColors.White,
                 Title = $"Cumulative distribution of clutter loss not exceeded for {f__ghz} GHz",
-                Subtitle = $"{h__meter} meter ground terminal height; High-rise environment",
+                Subtitle = $"{h__meter} meter ground terminal height; Low-rise environment",
                 DefaultFont = "Times New Roman",
                 SubtitleFont = "Times New Roman"
             };
@@ -84,7 +84,7 @@ namespace ClutterAnalysis
             xAxis.Position = AxisPosition.Bottom;
             xAxis.MajorGridlineStyle = LineStyle.Solid;
             xAxis.Minimum = -5;
-            xAxis.Maximum = 45;
+            xAxis.Maximum = 30;
             xAxis.FontSize = 14;
             xAxis.Font = "Times New Roman";
             pm.Axes.Add(xAxis);
@@ -101,33 +101,18 @@ namespace ClutterAnalysis
             // loop through each of the elevation angles
             for (int theta__deg = 90; theta__deg >= 0; theta__deg -= 10)
             {
-                var losses = new List<double>();
-
-                // loop through each of the location p's
-                for (double p = 0.01; p < 100; p += 0.01)
-                {
-                    double L_ces__db = P2108Revision.Invoke(f__ghz, theta__deg, p, h__meter, env);
-                    losses.Add(L_ces__db);
-                }
-
-                Mathematics.BinData(losses.ToArray(), out double[] bins, out _, out double[] probs, 0.1);
-
                 var cdfSeries = new LineSeries()
                 {
                     StrokeThickness = 2,
                     Title = $"{theta__deg}°"
                 };
 
-                var sortedBins = bins.OrderBy(b => b).ToList();
-                double total = 0;
-                for (int i = 0; i < bins.Length; i++)
+                for (double p = 0.01; p < 100; p += 0.01)
                 {
-                    // get index in bins of next sorted bin
-                    int j = Array.IndexOf(bins, sortedBins[i]);
-
-                    total += probs[j];
-                    cdfSeries.Points.Add(new DataPoint(bins[j], total * 100));
+                    double L_ces__db = P2108Revision.Invoke(f__ghz, theta__deg, p, h__meter, env);
+                    cdfSeries.Points.Add(new DataPoint(L_ces__db, p));
                 }
+
                 pm.Series.Add(cdfSeries);
             }
 
@@ -142,7 +127,7 @@ namespace ClutterAnalysis
             });
 
             var pngExporter = new OxyPlot.Wpf.PngExporter { Width = 800, Height = 600 };
-            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, Path.Combine(@"C:\outputs", "Rec-Example-Fig.png"));
+            OxyPlot.Wpf.ExporterExtensions.ExportToFile(pngExporter, pm, "Rec-Example-Fig.png");
         }
 
         static void FrequencyCurveSet(double h__meter, double theta__deg, P2108Revision.Environment env)
